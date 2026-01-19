@@ -666,6 +666,54 @@
       return { blank, pagar, ok: !blank && !pagar };
     }
 
+    // Fungsi untuk mengecek apakah OCR dapat membaca angka
+    function checkOcrReadable(ocrValue) {
+      if (!ocrValue) return false;
+      const strValue = String(ocrValue).trim();
+      
+      // Cek jika mengandung kata "Tidak terbaca"
+      if (strValue.toLowerCase().includes('tidak terbaca')) {
+        return false;
+      }
+      
+      // Cek jika mengandung angka (digit)
+      const hasDigits = /\d/.test(strValue);
+      
+      // Cek jika formatnya "Stand: XXXX" (dimana XXXX adalah angka)
+      if (strValue.toLowerCase().startsWith('stand:')) {
+        const standNumber = strValue.split(':')[1]?.trim();
+        return /\d+/.test(standNumber);
+      }
+      
+      return hasDigits;
+    }
+
+    // Fungsi untuk menentukan status gambar berdasarkan OCR
+    function determineImageStatus(ocrValue, imageExists, imageBlank, imagePagar) {
+      // Jika gambar tidak ada
+      if (!imageExists) {
+        return { status: 'false', text: 'Tidak ada gambar', tooltip: 'Gambar tidak ditemukan' };
+      }
+      
+      // Jika gambar kosong atau pagar
+      if (imageBlank) {
+        return { status: 'false', text: 'Gambar tidak valid', tooltip: 'Gambar kosong/blank' };
+      }
+      
+      if (imagePagar) {
+        return { status: 'false', text: 'Pagar', tooltip: 'Gambar pagar' };
+      }
+      
+      // Cek apakah OCR dapat membaca angka
+      const isOcrReadable = checkOcrReadable(ocrValue);
+      
+      if (isOcrReadable) {
+        return { status: 'true', text: 'Valid', tooltip: 'OCR dapat membaca angka' };
+      } else {
+        return { status: 'false', text: 'Tidak Valid', tooltip: 'OCR tidak dapat membaca angka' };
+      }
+    }
+
     function computeRowStatus(row, idpelIndex){
       if(ocrColIndex===-1) return null;
 
@@ -1143,20 +1191,62 @@
             img.alt=`${item.headerName} untuk IDPEL ${idpel}`;
             img.onclick=()=>openPopup(img.src);
 
+            // Tambahkan event untuk analisis gambar
+            img.onload = function() {
+              // Analisis apakah gambar kosong atau pagar
+              const imageBlank = isLikelyBlankImage(img);
+              const imagePagar = isPagarImage(img);
+              const imageExists = true;
+              
+              // Ambil nilai OCR dari kolom OCR
+              const ocrValue = rowData[ocrColIndex];
+              
+              // Tentukan status gambar
+              const imageStatus = determineImageStatus(ocrValue, imageExists, imageBlank, imagePagar);
+              
+              // Update status di kolom status
+              const statusCell = imgTd.nextElementSibling;
+              if (statusCell) {
+                statusCell.textContent = imageStatus.text;
+                statusCell.className = `row-status ${imageStatus.status}`;
+                statusCell.title = imageStatus.tooltip;
+              }
+            };
+
             img.onerror=function(){
               imgTd.textContent=`Foto di ${item.folderPath} tidak ditemukan`;
               img.remove();
+              
+              // Set status menjadi false karena gambar tidak ada
+              const ocrValue = rowData[ocrColIndex];
+              const imageStatus = determineImageStatus(ocrValue, false, false, false);
+              
+              const statusCell = imgTd.nextElementSibling;
+              if (statusCell) {
+                statusCell.textContent = imageStatus.text;
+                statusCell.className = `row-status ${imageStatus.status}`;
+                statusCell.title = imageStatus.tooltip;
+              }
             };
             imgTd.appendChild(img);
           }else{
             imgTd.textContent="-";
+            
+            // Set status N/A karena tidak ada IDPEL
+            const statusCell = imgTd.nextElementSibling;
+            if (statusCell) {
+              statusCell.textContent = "N/A";
+              statusCell.className = "row-status na";
+              statusCell.title = "Tidak ada IDPEL";
+            }
           }
           row.appendChild(imgTd);
 
-          // Kolom Status Gambar
+          // Kolom Status Gambar (placeholder)
           const statusTd=document.createElement("td");
-          statusTd.textContent="N/A";
+          statusTd.textContent="Loading...";
           statusTd.className="row-status na";
+          statusTd.title="Memeriksa gambar...";
           row.appendChild(statusTd);
         });
 
