@@ -1,0 +1,23 @@
+{
+  "foto_folders": [
+    {
+      "name": "Foto Asli",
+      "path": "2_images",
+      "description": "Foto asli dari download"
+    },
+    {
+      "name": "Foto Scan",
+      "path": "3_scan_output",
+      "description": "Hasil scan NEG"
+    }
+  ],
+  "default_blth": "202601",
+  "patterns": [
+    "IDPEL_BLTH_1.jpg",
+    "IDPEL_BLTH_2.jpg",
+    "IDPEL_BLTH_photoke-1.jpg",
+    "IDPEL_BLTH_photoke-2.jpg",
+    "IDPEL_BLTH.jpg",
+    "IDPEL.jpg"
+  ]
+}
